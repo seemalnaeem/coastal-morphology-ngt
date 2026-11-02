@@ -1,0 +1,12 @@
+{
+  "name": "@coastal/shared",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Cross-service constants and utilities for the coastal morphology portal",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./constants": "./constants/index.js",
+    "./utils": "./utils/index.js"
+  }
+}

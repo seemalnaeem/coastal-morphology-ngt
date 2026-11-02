@@ -1,0 +1,91 @@
+# Coastal Morphology Portal. Compose project namespace: coastal_morphology
+# Bring up: docker compose up -d --build
+
+name: coastal_morphology
+
+services:
+  db:
+    build: ./db
+    container_name: coastal_morphology_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-coastal_morphology_NGT}
+      POSTGRES_USER: ${POSTGRES_USER:-coastal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-strong}
+    ports:
+      - "${DB_HOST_PORT:-5442}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coastal} -d ${POSTGRES_DB:-coastal_morphology_NGT}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: coastal_morphology_backend
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: ${DATABASE_URL}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5182}
+      TILE_CACHE_SECONDS: ${TILE_CACHE_SECONDS:-300}
+      PORT: 3046
+    ports:
+      - "${BACKEND_HOST_PORT:-3046}:3046"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ./shared:/shared
+      - /app/node_modules
+
+  geoprocessing:
+    build: ./geoprocessing
+    container_name: coastal_morphology_geoprocessing
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RAW_DATA_DIR: ${RAW_DATA_DIR:-/data/raw}
+      COG_DIR: ${COG_DIR:-/data/cog}
+      PORT: 3047
+    ports:
+      - "${GEO_HOST_PORT:-3047}:3047"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./geoprocessing:/app
+      - "./Coastal Morphology/data:/data/raw:ro"
+      - cogdata:/data/cog
+
+  titiler:
+    image: ghcr.io/developmentseed/titiler:latest
+    container_name: coastal_morphology_titiler
+    environment:
+      # allow reading COGs from the shared volume
+      TITILER_API_CORS_ORIGINS: "*"
+      GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
+    ports:
+      - "${TITILER_HOST_PORT:-3048}:80"
+    volumes:
+      - cogdata:/data/cog:ro
+
+  frontend:
+    build: ./frontend
+    container_name: coastal_morphology_frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3046}
+      VITE_TITILER_URL: ${VITE_TITILER_URL:-http://localhost:3048}
+      VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:-}
+    ports:
+      - "${FRONTEND_HOST_PORT:-5182}:5182"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - ./shared:/shared
+      - /app/node_modules
+
+volumes:
+  pgdata:
+  cogdata:

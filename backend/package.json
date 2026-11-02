@@ -1,0 +1,16 @@
+{
+  "name": "coastal-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Express REST API and vector tile server for the coastal morphology portal",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}
